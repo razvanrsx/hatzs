@@ -575,7 +575,7 @@ function renderMonitoring() {
   monitoringTable.innerHTML = '';
   if (!state.monitoring.length) {
     monitoringTable.innerHTML =
-      '<tr><td colspan="4">No consumption records yet. If you just started the stack, wait a few seconds for the simulator to send readings, then click Refresh.</td></tr>';
+      '<tr><td colspan="4">No consumption records yet for the last 7 days. If you just started the stack, wait a few seconds for the simulator to send readings, then click Refresh.</td></tr>';
     return;
   }
 

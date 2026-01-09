@@ -193,6 +193,26 @@
           </table>
           <p id="monitoring-status" class="status"></p>
         </section>
+
+        <section id="notifications-section" class="card hidden">
+          <div class="section-heading">
+            <h2>Overconsumption Notifications</h2>
+            <button id="clear-notifications" class="secondary">Clear</button>
+          </div>
+          <p class="muted">Real-time alerts streamed from the monitoring service.</p>
+          <ul id="notifications-list" class="notification-list"></ul>
+        </section>
+
+        <section id="support-section" class="card hidden">
+          <h2>Customer Support Chatbot</h2>
+          <p class="muted">Ask about logins, devices, overconsumption alerts, and more.</p>
+          <div id="chat-history" class="chat-history"></div>
+          <form id="chat-form" class="chat-form">
+            <input id="chat-message" placeholder="Type your question..." required />
+            <button type="submit">Send</button>
+          </form>
+          <p id="chat-status" class="status"></p>
+        </section>
       </main>
     </div>
     <script type="module" src="/src/main.js"></script>

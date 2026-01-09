@@ -13,7 +13,10 @@ const state = {
   userSyncAt: null,
   deviceSyncAt: null,
   monitoringDay: null,
-  monitoringChartType: 'line'
+  monitoringChartType: 'line',
+  notifications: [],
+  chatHistory: [],
+  notificationSocket: null
 };
 
 const loginSection = document.getElementById('login-section');
@@ -53,6 +56,14 @@ const monitoringDayInput = document.getElementById('monitoring-day');
 const monitoringChart = document.getElementById('monitoring-chart');
 const chartLineButton = document.getElementById('chart-line');
 const chartBarButton = document.getElementById('chart-bar');
+const notificationsSection = document.getElementById('notifications-section');
+const notificationsList = document.getElementById('notifications-list');
+const clearNotificationsButton = document.getElementById('clear-notifications');
+const supportSection = document.getElementById('support-section');
+const chatHistory = document.getElementById('chat-history');
+const chatForm = document.getElementById('chat-form');
+const chatMessageInput = document.getElementById('chat-message');
+const chatStatus = document.getElementById('chat-status');
 let monitoringPollHandle = null;
 
 function setStatus(element, message, type) {
@@ -131,6 +142,14 @@ function applyRoleVisibility() {
   if (monitoringSection) {
     monitoringSection.classList.toggle('hidden', !signedIn);
   }
+
+  if (notificationsSection) {
+    notificationsSection.classList.toggle('hidden', !signedIn);
+  }
+
+  if (supportSection) {
+    supportSection.classList.toggle('hidden', !signedIn);
+  }
 }
 
 function updateAuthVisibility() {
@@ -152,10 +171,13 @@ function setCurrentUserFromToken(token) {
       clearInterval(monitoringPollHandle);
       monitoringPollHandle = null;
     }
+    disconnectNotificationSocket();
     state.currentUser = null;
     state.users = [];
     state.devices = [];
     state.monitoring = [];
+    state.notifications = [];
+    state.chatHistory = [];
     state.userSyncAt = null;
     state.deviceSyncAt = null;
     state.authView = 'login';
@@ -163,6 +185,8 @@ function setCurrentUserFromToken(token) {
     renderDevices();
     renderMonitoring();
     renderMonitoringChart();
+    renderNotifications();
+    renderChat();
     updateSessionSummary();
     applyRoleVisibility();
     updateSyncBadges();
@@ -185,6 +209,7 @@ function setCurrentUserFromToken(token) {
   updateSessionSummary();
   applyRoleVisibility();
   updateAuthVisibility();
+  connectNotificationSocket();
 }
 
 function startMonitoringPoll() {
@@ -323,6 +348,11 @@ refreshMonitoringButton?.addEventListener('click', async () => {
   await loadMonitoring();
 });
 
+clearNotificationsButton?.addEventListener('click', () => {
+  state.notifications = [];
+  renderNotifications();
+});
+
 monitoringFilter?.addEventListener('change', async (event) => {
   await loadMonitoring(event.target.value);
 });
@@ -345,6 +375,29 @@ function setChartType(type) {
 
 chartLineButton?.addEventListener('click', () => setChartType('line'));
 chartBarButton?.addEventListener('click', () => setChartType('bar'));
+
+chatForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!chatMessageInput) return;
+  const message = chatMessageInput.value.trim();
+  if (!message) {
+    setStatus(chatStatus, 'Please enter a message.', 'error');
+    return;
+  }
+  setStatus(chatStatus, 'Sending message…');
+  appendChatMessage('user', message);
+  chatMessageInput.value = '';
+  try {
+    const response = await request('/support/chat', {
+      method: 'POST',
+      body: { message }
+    });
+    appendChatMessage('bot', response.response, response.matchedRule);
+    setStatus(chatStatus, 'Reply received.', 'success');
+  } catch (error) {
+    setStatus(chatStatus, error.message || 'Chatbot request failed.', 'error');
+  }
+});
 
 async function loadUsers() {
   if (!state.token) {
@@ -538,6 +591,60 @@ function renderMonitoring() {
     `;
     monitoringTable.appendChild(row);
   }
+}
+
+function renderNotifications() {
+  if (!notificationsList) return;
+  notificationsList.innerHTML = '';
+  if (!state.notifications.length) {
+    const empty = document.createElement('li');
+    empty.className = 'empty';
+    empty.textContent = 'No notifications yet.';
+    notificationsList.appendChild(empty);
+    return;
+  }
+
+  for (const notification of state.notifications) {
+    const item = document.createElement('li');
+    item.innerHTML = `
+      <div class="notification-title">Device #${escapeHtml(notification.deviceId ?? '')}</div>
+      <div class="notification-body">
+        Hour: ${escapeHtml(formatHour(notification.hourStart))}
+        • Consumption: ${escapeHtml(notification.consumption)}
+        • Threshold: ${escapeHtml(notification.threshold)}
+      </div>
+    `;
+    notificationsList.appendChild(item);
+  }
+}
+
+function renderChat() {
+  if (!chatHistory) return;
+  chatHistory.innerHTML = '';
+  if (!state.chatHistory.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = 'No messages yet. Ask a question to get started.';
+    chatHistory.appendChild(empty);
+    return;
+  }
+
+  for (const entry of state.chatHistory) {
+    const row = document.createElement('div');
+    row.className = `chat-message ${entry.role}`;
+    const meta =
+      entry.role === 'bot' && entry.matchedRule
+        ? `<span class="chat-meta">Rule: ${escapeHtml(entry.matchedRule)}</span>`
+        : '';
+    row.innerHTML = `
+      <div class="chat-bubble">
+        <p>${escapeHtml(entry.text)}</p>
+        ${meta}
+      </div>
+    `;
+    chatHistory.appendChild(row);
+  }
+  chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
 function filterMonitoringByDay(dayString) {
@@ -994,6 +1101,45 @@ function updateMonitoringFilterOptions(selectedId) {
   monitoringFilter.value = sanitizedValue;
 }
 
+function appendChatMessage(role, text, matchedRule = '') {
+  state.chatHistory.push({ role, text, matchedRule });
+  renderChat();
+}
+
+function connectNotificationSocket() {
+  if (state.notificationSocket || !state.token) {
+    return;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  const socketUrl = `${protocol}://${window.location.host}/ws/notifications`;
+  const socket = new WebSocket(socketUrl);
+  state.notificationSocket = socket;
+
+  socket.addEventListener('message', (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      state.notifications.unshift(payload);
+      if (state.notifications.length > 20) {
+        state.notifications = state.notifications.slice(0, 20);
+      }
+    } catch (error) {
+      state.notifications.unshift({ deviceId: 'n/a', hourStart: '', consumption: event.data, threshold: '' });
+    }
+    renderNotifications();
+  });
+
+  socket.addEventListener('close', () => {
+    state.notificationSocket = null;
+  });
+}
+
+function disconnectNotificationSocket() {
+  if (state.notificationSocket) {
+    state.notificationSocket.close();
+    state.notificationSocket = null;
+  }
+}
+
 // Initialize session banner and role-based visibility without preloading data.
 updateSessionSummary();
 applyRoleVisibility();
@@ -1001,3 +1147,5 @@ updateAuthVisibility();
 ensureMonitoringDay();
 updateSyncBadges();
 setChartType(state.monitoringChartType);
+renderNotifications();
+renderChat();

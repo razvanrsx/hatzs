@@ -1133,17 +1133,25 @@ async function sendChatMessage(message) {
 
 function renderChatQuestions() {
   if (!chatQuestions) return;
-  chatQuestions.innerHTML = '';
-  for (const question of QUICK_QUESTIONS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'secondary';
-    button.textContent = question;
-    button.addEventListener('click', async () => {
-      await sendChatMessage(question);
-    });
-    chatQuestions.appendChild(button);
-  }
+  chatQuestions.innerHTML = QUICK_QUESTIONS.map(
+    (question) =>
+      `<button type="button" class="secondary" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`
+  ).join('');
+}
+
+function setupChatQuestionClicks() {
+  if (!chatQuestions) return;
+  chatQuestions.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLButtonElement)) {
+      return;
+    }
+    const question = target.dataset.question;
+    if (!question) {
+      return;
+    }
+    await sendChatMessage(question);
+  });
 }
 
 function connectNotificationSocket() {
@@ -1190,3 +1198,4 @@ setChartType(state.monitoringChartType);
 renderNotifications();
 renderChat();
 renderChatQuestions();
+setupChatQuestionClicks();

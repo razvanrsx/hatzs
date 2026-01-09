@@ -10,12 +10,17 @@ flowchart TD
     TR -->|CRUD| USER[User Service]
     TR -->|CRUD| DEVICE[Device Service]
     TR -->|Monitoring APIs| MON[Monitoring Service]
+    TR -->|Chat APIs| SUP[Support Service]
+    TR -->|WebSocket| WS[WebSocket Service]
     AUTH -->|Credentials| CredStore[(Authorization PostgreSQL)]
     USER -->|Profiles| UserStore[(User PostgreSQL)]
     DEVICE -->|Devices| DeviceStore[(Device PostgreSQL)]
     MON -->|Hourly totals| MonStore[(Monitoring PostgreSQL)]
     SIM[Simulator Service] -->|Device measurements| MQ[(RabbitMQ)]
     MQ -->|Device measurements| MON
+    MON -->|Overconsumption alerts| MQ
+    MQ -->|Overconsumption alerts| WS
+    WS -->|Real-time alerts| FE
 ```
 
 ## Responsibilities
@@ -25,6 +30,8 @@ flowchart TD
 - **User Service** – Provides CRUD APIs for platform users backed by PostgreSQL.
 - **Device Service** – Provides CRUD APIs for devices, including user ownership assignments, backed by PostgreSQL.
 - **Monitoring Service** – Consumes device measurement events from RabbitMQ, aggregates hourly consumption per device, and exposes read APIs over Traefik.
+- **Support Service** – Provides a rule-based customer support chatbot over REST.
+- **WebSocket Service** – Consumes overconsumption alerts from RabbitMQ and broadcasts them to connected WebSocket clients.
 - **Simulator Service** – Publishes randomised device measurements to RabbitMQ on a schedule to mimic meter readings.
 - **RabbitMQ** – Routes messages between the simulator producer and the monitoring consumer.
 - **Swagger/OpenAPI** – Each service exposes interactive documentation under `/api/<service>/swagger-ui/index.html` and machine-readable specs under `/api/<service>/v3/api-docs` (e.g., `/api/users/swagger-ui/index.html`).
@@ -48,6 +55,7 @@ Device records store the owning user's identifier (`user_id`) so API consumers c
 The Docker Compose stack mirrors the expected deployment layout:
 
 - `authorization`, `user`, `device`, `monitoring`, and `simulator` services run as independent containers.
+- `support` and `websocket` services run as independent containers.
 - `authorization-db`, `user-db`, `device-db`, and `monitoring-db` provide persistent PostgreSQL storage for each service.
 - `rabbitmq` mediates measurement messages between simulator and monitoring containers and exposes its management UI on port 15672.
 - `traefik` exposes port 8080 to the host and routes `/api/*` requests to the appropriate backend.

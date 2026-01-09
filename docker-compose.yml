@@ -114,6 +114,30 @@ services:
       - "traefik.http.routers.monitoring.middlewares=monitoring-strip"
       - "traefik.http.services.monitoring.loadbalancer.server.port=8083"
 
+  websocket-service:
+    build: ./services/websocket
+    depends_on:
+      - rabbitmq
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.websocket.rule=PathPrefix(`/ws`)"
+      - "traefik.http.routers.websocket.entrypoints=web"
+      - "traefik.http.routers.websocket.priority=10"
+      - "traefik.http.services.websocket.loadbalancer.server.port=8085"
+
+  support-service:
+    build: ./services/support
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.support.rule=PathPrefix(`/api/support`)"
+      - "traefik.http.routers.support.entrypoints=web"
+      - "traefik.http.routers.support.priority=10"
+      - "traefik.http.middlewares.support-strip.stripPrefix.prefixes=/api"
+      - "traefik.http.routers.support.middlewares=support-strip"
+      - "traefik.http.services.support.loadbalancer.server.port=8086"
+
   monitoring-db:
     image: postgres:15
     environment:

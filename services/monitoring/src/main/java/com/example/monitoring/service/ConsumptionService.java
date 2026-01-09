@@ -1,12 +1,8 @@
 package com.example.monitoring.service;
 
-import com.example.monitoring.config.MessagingConfig;
 import com.example.monitoring.model.DeviceMeasurement;
 import com.example.monitoring.model.HourlyConsumption;
-import com.example.monitoring.model.OverconsumptionAlert;
 import com.example.monitoring.repository.HourlyConsumptionRepository;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,15 +16,9 @@ import java.util.List;
 public class ConsumptionService {
 
     private final HourlyConsumptionRepository repository;
-    private final RabbitTemplate rabbitTemplate;
-    private final BigDecimal overconsumptionThreshold;
 
-    public ConsumptionService(HourlyConsumptionRepository repository,
-                              RabbitTemplate rabbitTemplate,
-                              @Value("${monitoring.overconsumption-threshold:100}") BigDecimal overconsumptionThreshold) {
+    public ConsumptionService(HourlyConsumptionRepository repository) {
         this.repository = repository;
-        this.rabbitTemplate = rabbitTemplate;
-        this.overconsumptionThreshold = overconsumptionThreshold;
     }
 
     @Transactional
@@ -63,24 +53,7 @@ public class ConsumptionService {
                     return hc;
                 });
 
-        BigDecimal previousConsumption = existing.getConsumption();
-        BigDecimal updatedConsumption = previousConsumption.add(value);
-        existing.setConsumption(updatedConsumption);
-
-        if (previousConsumption.compareTo(overconsumptionThreshold) < 0
-                && updatedConsumption.compareTo(overconsumptionThreshold) >= 0) {
-            OverconsumptionAlert alert = new OverconsumptionAlert(
-                    measurement.getDeviceId(),
-                    hourStart,
-                    updatedConsumption,
-                    overconsumptionThreshold
-            );
-            rabbitTemplate.convertAndSend(
-                    MessagingConfig.OVERCONSUMPTION_EXCHANGE,
-                    MessagingConfig.OVERCONSUMPTION_ROUTING_KEY,
-                    alert
-            );
-        }
+        existing.setConsumption(existing.getConsumption().add(value));
 
         return repository.save(existing);
     }

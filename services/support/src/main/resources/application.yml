@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: support-service
+
+server:
+  port: 8086
+
+springdoc:
+  api-docs:
+    path: /support/v3/api-docs
+  swagger-ui:
+    path: /support/swagger-ui
+    config-url: /api/support/v3/api-docs/swagger-config
+    url: /api/support/v3/api-docs

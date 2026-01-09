@@ -263,3 +263,99 @@ table tbody tr:hover {
   text-align: center;
   padding: 1rem 0;
 }
+
+.notification-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.notification-list li {
+  border: 1px solid #e4e7eb;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+}
+
+.notification-list .empty {
+  background: transparent;
+  border: none;
+  color: #52606d;
+}
+
+.notification-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.notification-body {
+  color: #52606d;
+  font-size: 0.95rem;
+}
+
+.chat-history {
+  border: 1px solid #e4e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  min-height: 220px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #f8fafc;
+  margin-bottom: 1rem;
+}
+
+.chat-history .empty {
+  color: #52606d;
+  text-align: center;
+  margin: 0;
+}
+
+.chat-message {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.chat-message.user {
+  justify-content: flex-end;
+}
+
+.chat-message.bot {
+  justify-content: flex-start;
+}
+
+.chat-bubble {
+  max-width: 70%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e4e7eb;
+}
+
+.chat-message.user .chat-bubble {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.chat-bubble p {
+  margin: 0;
+}
+
+.chat-meta {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.chat-form input {
+  flex: 1;
+}

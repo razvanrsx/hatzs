@@ -17,6 +17,9 @@ public class MessagingConfig {
     public static final String EXCHANGE = "measurement.exchange";
     public static final String ROUTING_KEY = "measurement.routing-key";
     public static final String QUEUE = "measurement.queue";
+    public static final String OVERCONSUMPTION_EXCHANGE = "overconsumption.exchange";
+    public static final String OVERCONSUMPTION_ROUTING_KEY = "overconsumption.routing-key";
+    public static final String OVERCONSUMPTION_QUEUE = "overconsumption.queue";
 
     // ✔ create exchange
     @Bean
@@ -36,6 +39,23 @@ public class MessagingConfig {
         return BindingBuilder.bind(measurementQueue)
                 .to(measurementExchange)
                 .with(ROUTING_KEY);
+    }
+
+    @Bean
+    public TopicExchange overconsumptionExchange() {
+        return new TopicExchange(OVERCONSUMPTION_EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue overconsumptionQueue() {
+        return new Queue(OVERCONSUMPTION_QUEUE, true);
+    }
+
+    @Bean
+    public Binding overconsumptionBinding(Queue overconsumptionQueue, TopicExchange overconsumptionExchange) {
+        return BindingBuilder.bind(overconsumptionQueue)
+                .to(overconsumptionExchange)
+                .with(OVERCONSUMPTION_ROUTING_KEY);
     }
 
     // ✔ JSON converter
